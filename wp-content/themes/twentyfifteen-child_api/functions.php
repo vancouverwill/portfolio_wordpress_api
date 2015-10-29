@@ -7,17 +7,28 @@ function theme_enqueue_styles() {
 }
 
 
-add_action( 'rest_api_init', 'slug_register_starship' );
-function slug_register_starship() {
+add_action( 'rest_api_init', 'slug_register_api' );
+
+function slug_register_api() {
     register_api_field( 'post',
-        'gallery',
+        'single_gallery_image',
         array(
-            'get_callback'    => 'slug_get_starship',
+            'get_callback'    => 'slug_get_api_field',
+            'update_callback' => null,
+            'schema'          => null,
+        )
+    );
+
+    register_api_field( 'post',
+        'gallery_set',
+        array(
+            'get_callback'    => 'slug_get_api_field',
             'update_callback' => null,
             'schema'          => null,
         )
     );
 }
+
 
 /**
  * Get the value of the "starship" field
@@ -28,9 +39,7 @@ function slug_register_starship() {
  *
  * @return mixed
  */
-function slug_get_starship( $object, $field_name, $request ) {
+function slug_get_api_field( $object, $field_name, $request ) {
     // return get_post_meta( $object[ 'id' ], $field_name, true );
-    // return the_field($field_name, $object[ 'id' ]);
     return get_field($field_name, $object[ 'id' ]);
-    // return "brazil xxx";
 }
