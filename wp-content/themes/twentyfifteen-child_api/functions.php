@@ -11,7 +11,7 @@ add_action( 'rest_api_init', 'slug_register_api' );
 
 function slug_register_api() {
     register_api_field( 'post',
-        'single_gallery_image',
+        'gallery_set',
         array(
             'get_callback'    => 'slug_get_api_field',
             'update_callback' => null,
@@ -20,7 +20,16 @@ function slug_register_api() {
     );
 
     register_api_field( 'post',
-        'gallery_set',
+        'project_short_description',
+        array(
+            'get_callback'    => 'slug_get_api_field',
+            'update_callback' => null,
+            'schema'          => null,
+        )
+    );
+
+    register_api_field( 'post',
+        'font_color',
         array(
             'get_callback'    => 'slug_get_api_field',
             'update_callback' => null,
