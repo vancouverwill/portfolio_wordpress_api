@@ -1,12 +1,11 @@
 <?php
-
 /**
- * Extra File where a lot of the extra functions from plugin.php go.
+ * Extra File
+ *
+ * Contains extra functions from plugin.php go.
  *
  * @package WordPress
  * @subpackage JSON API
- *
- * @TODO fix this doc block (Make it better maybe?)
  */
 
 add_action( 'wp_enqueue_scripts', 'rest_register_scripts', -100 );
@@ -67,38 +66,6 @@ function rest_get_avatar_sizes() {
 	 *                     Default `[ 24, 48, 96 ]`.
 	 */
 	return apply_filters( 'rest_avatar_sizes', array( 24, 48, 96 ) );
-}
-
-/**
- * Retrieves the timezone object for the site.
- *
- * @since 4.4.0
- *
- * @return DateTimeZone DateTimeZone instance.
- */
-function rest_get_timezone() {
-	static $zone = null;
-
-	if ( null !== $zone ) {
-		return $zone;
-	}
-
-	$tzstring = get_option( 'timezone_string' );
-
-	if ( ! $tzstring ) {
-		// Create a UTC+- zone if no timezone string exists.
-		$current_offset = get_option( 'gmt_offset' );
-		if ( 0 === $current_offset ) {
-			$tzstring = 'UTC';
-		} elseif ( $current_offset < 0 ) {
-			$tzstring = 'Etc/GMT' . $current_offset;
-		} else {
-			$tzstring = 'Etc/GMT+' . $current_offset;
-		}
-	}
-	$zone = new DateTimeZone( $tzstring );
-
-	return $zone;
 }
 
 /**

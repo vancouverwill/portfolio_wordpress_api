@@ -16,23 +16,29 @@ define( 'REST_API_VERSION', '2.0' );
 /** Compatibility shims for PHP functions */
 include_once( dirname( __FILE__ ) . '/wp-includes/compat.php' );
 
+/** Core HTTP Request API */
+if ( file_exists( ABSPATH . WPINC . '/class-wp-http-response.php' ) ) {
+	include_once( dirname( __FILE__ ) . '/wp-includes/http.php' );
+} else {
+	// Compatibility with WP 4.3 and below
+	include_once( dirname( __FILE__ ) . '/wp-includes/class-wp-http-response.php' );
+}
+
 /** Main API functions */
 include_once( dirname( __FILE__ ) . '/wp-includes/functions.php' );
+include_once( dirname( __FILE__ ) . '/wp-includes/rest-api.php' );
 
 /** WP_REST_Server class */
 include_once( dirname( __FILE__ ) . '/wp-includes/rest-api/class-wp-rest-server.php' );
 
 /** WP_HTTP_Response class */
-include_once( dirname( __FILE__ ) . '/wp-includes/rest-api/class-wp-http-response.php' );
+include_once( dirname( __FILE__ ) . '/wp-includes/class-wp-http-response.php' );
 
 /** WP_REST_Response class */
 include_once( dirname( __FILE__ ) . '/wp-includes/rest-api/class-wp-rest-response.php' );
 
 /** WP_REST_Request class */
 require_once( dirname( __FILE__ ) . '/wp-includes/rest-api/class-wp-rest-request.php' );
-
-/** REST functions */
-include_once( dirname( __FILE__ ) . '/wp-includes/rest-api/rest-functions.php' );
 
 /** REST filters */
 include_once( dirname( __FILE__ ) . '/wp-includes/filters.php' );

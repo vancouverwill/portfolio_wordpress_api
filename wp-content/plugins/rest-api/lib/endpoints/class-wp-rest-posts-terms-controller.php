@@ -19,22 +19,24 @@ class WP_REST_Posts_Terms_Controller extends WP_REST_Controller {
 		$base     = $this->posts_controller->get_post_type_base( $this->post_type );
 		$tax_base = $this->terms_controller->get_taxonomy_base( $this->taxonomy );
 
-		$query_params = $this->get_collection_params();
-		register_rest_route( 'wp/v2', sprintf( '/%s/(?P<post_id>[\d]+)/terms/%s', $base, $tax_base ), array(
+		register_rest_route( 'wp/v2', sprintf( '/%s/(?P<post_id>[\d]+)/%s', $base, $tax_base ), array(
 			array(
 				'methods'             => WP_REST_Server::READABLE,
 				'callback'            => array( $this, 'get_items' ),
 				'permission_callback' => array( $this, 'get_items_permissions_check' ),
-				'args'                => $query_params,
+				'args'                => $this->get_collection_params(),
 			),
 			'schema' => array( $this, 'get_public_item_schema' ),
 		) );
 
-		register_rest_route( 'wp/v2', sprintf( '/%s/(?P<post_id>[\d]+)/terms/%s/(?P<term_id>[\d]+)', $base, $tax_base ), array(
+		register_rest_route( 'wp/v2', sprintf( '/%s/(?P<post_id>[\d]+)/%s/(?P<term_id>[\d]+)', $base, $tax_base ), array(
 			array(
 				'methods'             => WP_REST_Server::READABLE,
 				'callback'            => array( $this, 'get_item' ),
 				'permission_callback' => array( $this, 'get_items_permissions_check' ),
+				'args'                => array(
+					'context'         => $this->get_context_param( array( 'default' => 'view' ) ),
+				),
 			),
 			array(
 				'methods'             => WP_REST_Server::CREATABLE,
@@ -45,6 +47,11 @@ class WP_REST_Posts_Terms_Controller extends WP_REST_Controller {
 				'methods'         => WP_REST_Server::DELETABLE,
 				'callback'        => array( $this, 'delete_item' ),
 				'permission_callback' => array( $this, 'create_item_permissions_check' ),
+				'args'            => array(
+					'force'       => array(
+						'default' => false,
+					),
+				),
 			),
 			'schema' => array( $this, 'get_public_item_schema' ),
 		) );
@@ -99,11 +106,11 @@ class WP_REST_Posts_Terms_Controller extends WP_REST_Controller {
 
 		$terms = wp_get_object_terms( $post->ID, $this->taxonomy );
 
-		if ( ! in_array( $term_id, wp_list_pluck( $terms, 'term_taxonomy_id' ) ) ) {
-			return new WP_Error( 'rest_post_not_in_term', __( 'Invalid taxonomy for post ID.' ), array( 'status' => 404 ) );
+		if ( ! in_array( $term_id, wp_list_pluck( $terms, 'term_id' ) ) ) {
+			return new WP_Error( 'rest_post_not_in_term', __( 'Invalid taxonomy for post id.' ), array( 'status' => 404 ) );
 		}
 
-		$term = $this->terms_controller->prepare_item_for_response( get_term_by( 'term_taxonomy_id', $term_id, $this->taxonomy ), $request );
+		$term = $this->terms_controller->prepare_item_for_response( get_term( $term_id, $this->taxonomy ), $request );
 
 		$response = rest_ensure_response( $term );
 
@@ -125,17 +132,26 @@ class WP_REST_Posts_Terms_Controller extends WP_REST_Controller {
 			return $is_request_valid;
 		}
 
-		$term = get_term_by( 'term_taxonomy_id', $term_id, $this->taxonomy );
+		$term = get_term( $term_id, $this->taxonomy );
 		$tt_ids = wp_set_object_terms( $post->ID, $term->term_id, $this->taxonomy, true );
 
 		if ( is_wp_error( $tt_ids ) ) {
 			return $tt_ids;
 		}
 
-		$term = $this->terms_controller->prepare_item_for_response( get_term_by( 'term_taxonomy_id', $term_id, $this->taxonomy ), $request );
+		$term = $this->terms_controller->prepare_item_for_response( get_term( $term_id, $this->taxonomy ), $request );
 
 		$response = rest_ensure_response( $term );
 		$response->set_status( 201 );
+
+		/**
+		 * Fires after a term is added to a post via the REST API.
+		 *
+		 * @param array           $term    The added term data.
+		 * @param WP_Post         $post    The post the term was added to.
+		 * @param WP_REST_Request $request The request sent to the API.
+		 */
+		do_action( 'rest_insert_term', $term, $post, $request );
 
 		return $term;
 	}
@@ -169,6 +185,15 @@ class WP_REST_Posts_Terms_Controller extends WP_REST_Controller {
 			return $remove;
 		}
 
+		/**
+		 * Fires after a term is removed from a post via the REST API.
+		 *
+		 * @param array           $previous_item The removed term data.
+		 * @param WP_Post         $post          The post the term was removed from.
+		 * @param WP_REST_Request $request       The request sent to the API.
+		 */
+		do_action( 'rest_remove_term', $previous_item, $post, $request );
+
 		return $previous_item;
 	}
 
@@ -184,23 +209,24 @@ class WP_REST_Posts_Terms_Controller extends WP_REST_Controller {
 	/**
 	 * Validate the API request for relationship requests.
 	 *
-	 * @param WP_REST_Request $request
+	 * @param WP_REST_Request $request Full data about the request.
 	 * @return WP_Error|true
 	 */
 	protected function validate_request( $request ) {
+		$post = get_post( (int) $request['post_id'] );
 
-		$post_request = new WP_REST_Request();
-		$post_request->set_param( 'id', $request['post_id'] );
+		if ( empty( $post ) || empty( $post->ID ) || $post->post_type !== $this->post_type ) {
+			return new WP_Error( 'rest_post_invalid_id', __( 'Invalid post id.' ), array( 'status' => 404 ) );
+		}
 
-		$post_check = $this->posts_controller->get_item( $post_request );
-		if ( is_wp_error( $post_check ) ) {
-			return $post_check;
+		if ( ! $this->posts_controller->check_read_permission( $post ) ) {
+			return new WP_Error( 'rest_forbidden', __( 'Sorry, you cannot view this post.' ), array( 'status' => rest_authorization_required_code() ) );
 		}
 
 		if ( ! empty( $request['term_id'] ) ) {
 			$term_id  = absint( $request['term_id'] );
 
-			$term = get_term_by( 'term_taxonomy_id', $term_id, $this->taxonomy );
+			$term = get_term( $term_id, $this->taxonomy );
 			if ( ! $term || $term->taxonomy !== $this->taxonomy ) {
 				return new WP_Error( 'rest_term_invalid', __( "Term doesn't exist." ), array( 'status' => 404 ) );
 			}
@@ -264,6 +290,7 @@ class WP_REST_Posts_Terms_Controller extends WP_REST_Controller {
 	 */
 	public function get_collection_params() {
 		$query_params = array();
+		$query_params['context'] = $this->get_context_param( array( 'default' => 'view' ) );
 		$query_params['order'] = array(
 			'description'        => 'Order sort attribute ascending or descending.',
 			'type'               => 'string',

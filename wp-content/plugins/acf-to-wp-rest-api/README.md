@@ -1,6 +1,7 @@
 ACF to WP REST API
 ================
-Puts in answers all fields of ACF.
+Puts ACF data into the WP-REST-API ( WP-API | WordPress JSON API ).
+Also you can customize the answer using filters.
 
 Installation
 ================
@@ -10,6 +11,7 @@ Installation
 Get ACF data by ID
 ================
 - /wp-json/acf/post/`<ID>`
+- /wp-json/acf/page/`<ID>`
 - /wp-json/acf/user/`<ID>`
 - /wp-json/acf/term/`<ID>`/`<TAXONOMY>`
 - /wp-json/acf/comment/`<ID>`
@@ -35,4 +37,20 @@ Sample Answer
     "field2" : "value 2"
   }
 }
+```
+
+Filter
+================
+Use the filter (**acf_to_wp_rest_api_`{type}`_data**) to customize the answer.
+
+The wildcard `{type}` can be: **post**, **page**, **user**, **term**, **comment**, **attachment** or **options**
+
+#### How to use
+```PHP
+add_filter( 'acf_to_wp_rest_api_post_data', function( $data, $object, $context ) {
+    if ( isset( $data['type'] ) && 'my_post_type' == $data['type'] && isset( $data['acf'] ) ) {
+      // do something
+    }
+    return $data;
+}, 10, 3 );
 ```
