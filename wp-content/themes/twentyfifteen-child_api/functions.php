@@ -40,7 +40,7 @@ function theme_enqueue_styles() {
 add_action( 'rest_api_init', 'slug_register_api' );
 
 function slug_register_api() {
-    register_api_field( 'portfolio_project',
+    register_rest_field( 'portfolio_project',
         'gallery_set',
         array(
             'get_callback'    => 'slug_get_api_field',
@@ -49,7 +49,7 @@ function slug_register_api() {
         )
     );
 
-    register_api_field( 'portfolio_project',
+    register_rest_field( 'portfolio_project',
         'project_short_description',
         array(
             'get_callback'    => 'slug_get_api_field',
@@ -58,7 +58,7 @@ function slug_register_api() {
         )
     );
 
-    register_api_field( 'portfolio_project',
+    register_rest_field( 'portfolio_project',
         'font_color',
         array(
             'get_callback'    => 'slug_get_api_field',
